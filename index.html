@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Tracker</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+
+    <!-- Our custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header>
+        <h1>My Travel Tracker</h1>
+        <p>Click on countries you've visited!</p>
+    </header>
+
+    <main>
+        <div id="map"></div>
+
+        <div class="stats">
+            <h2>Travel Statistics</h2>
+            <div class="stat-item">
+                <span class="stat-label">Countries Visited:</span>
+                <span class="stat-value" id="countries-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Continents Explored:</span>
+                <span class="stat-value" id="continents-count">0</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+    <!-- Our custom JavaScript -->
+    <script src="js/script.js"></script>
+</body>
+
+</html>
