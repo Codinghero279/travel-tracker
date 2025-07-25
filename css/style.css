@@ -32,7 +32,7 @@ header p {
 
 /* Main content */
 main {
-    max-width: 1200px;
+    max-width: 2560px;
     margin: 2rem auto;
     padding: 0 1rem;
     display: grid;
@@ -42,7 +42,7 @@ main {
 
 /* Map styles */
 #map {
-    height: 600px;
+    height: 1100px;
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     border: 2px solid #e1e8ed;
