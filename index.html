@@ -24,13 +24,18 @@
 
         <div class="stats">
             <h2>Travel Statistics</h2>
+            <div class="stat-item" id="continent-stat">
+                <span class="stat-label stat-label-dropdown" id="continents-dropdown-label" style="cursor:pointer;">
+                    Continents Explored
+                    <span class="dropdown-arrow" id="dropdown-arrow">&#9660;</span>
+                </span>
+                <span class="stat-value" id="continents-count">0 of 7</span>
+            </div>
+            <!-- Dropdown details area, right after continent stat -->
+            <div id="continents-details" class="continents-details" style="display: none;"></div>
             <div class="stat-item">
                 <span class="stat-label">Countries Visited:</span>
                 <span class="stat-value" id="countries-count">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Continents Explored:</span>
-                <span class="stat-value" id="continents-count">0</span>
             </div>
         </div>
     </main>

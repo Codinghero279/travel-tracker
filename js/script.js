@@ -1,131 +1,198 @@
-// Initialize the map
-const map = L.map('map').setView([20, 0], 2); // Center on world view
-const countryLayers = [];
+(function () {
+    // Initialize the map
+    const map = L.map('map').setView([20, 0], 4); // Center on world view
 
-// Add tile layer (the actual map images)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 18
-}).addTo(map);
+    // Map to store country information for instant lookup by name
+    const countriesByName = {}; // { name: {layer, continent} }
 
-// Add the border data for each country
-fetch('assets/countries.geo.json')
-    .then(response => response.json())
-    .then(data => {
-        L.geoJSON(data, {
-            // This style code is for the polygon initilization when they are added
-            style: function (feature) {
-                const countryName = feature.properties.NAME;
-                const visited = visitedCountries.has(countryName);
-                return {
-                    fillColor: visited ? "#4CAF50" : "#3388ff",
-                    fillOpacity: visited ? 0.7 : 0.2,
-                    weight: 1,
-                    color: visited ? "#2E7D32" : "#3388ff"
-                };
-            },
-            // This function is called for each country polygon
-            onEachFeature: function (feature, layer) {
-                const countryName = feature.properties.NAME;
-                const continent = feature.properties.CONTINENT || "Unknown";
+    // Sets to store visited countries
+    const visitedCountries = new Set();
 
-                countryLayers.push({ name: countryName, continent: continent, layer: layer });
+    // List and mapping for continents and their countries
+    const continentList = [
+        "Africa", "Antarctica", "Asia", "Europe", "North America", "Oceania", "South America"
+    ];
+    const countriesByContinent = {};
+    continentList.forEach(cont => { countriesByContinent[cont] = []; });
 
-                // Bind a popup to the polygon with country name and a button
-                layer.bindPopup(`
-                <div>
-                    <h3>${countryName}</h3>
-                    <button onclick="toggleVisited('${countryName}')">
-                        Mark as Visited
-                    </button>
-                </div>
-                `);
+    // Add tile layer (the actual map images)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-                // Optional: add click event if you want popup to open on click
-                layer.on('click', () => {
-                    layer.openPopup();
-                });
-            }
-        }).addTo(map);
-    });
+    // This sets the max bounds from about [-85, -180] to [85, 180] (the entire "real" world)
+    map.setMaxBounds([
+        [-85, -180],
+        [85, 180]
+    ]);
 
-// Sets to store visited countries and continents
-let visitedCountries = new Set();
-let visitedContinents = new Set();
+    // Sets min and max zoom for the map
+    map.setMinZoom(4);
+    map.setMaxZoom(18);
 
-// Function to toggle visited status
-function toggleVisited(countryName) {
-    const country = countryLayers.find(c => c.name === countryName);
-    if (!country) return;
-    // This is when you remove a country from the list of visited countries
-    if (visitedCountries.has(countryName)) {
-        // Delete the country from the visited list
-        visitedCountries.delete(countryName);
+    // Fetch and add the border data for each country
+    fetch('assets/countries.geo.json')
+        .then(response => response.json())
+        .then(data => {
+            // Build lookups for country and continent on data load
+            data.features.forEach(feature => {
+                const cName = feature.properties.NAME;
+                const cont = feature.properties.CONTINENT;
+                if (continentList.includes(cont)) {
+                    countriesByContinent[cont].push(cName);
+                }
+                countriesByName[cName] = { continent: cont, layer: null }; // The layer will be added next
+            });
 
-        // Check if any other visited country shares the same continent
-        let stillHasSameContinent = false;
-        visitedCountries.forEach(name => {
-            const other = countryLayers.find(c => c.name === name);
-            if (other && other.continent === country.continent) {
-                stillHasSameContinent = true;
-            }
+            // Add the geoJson countries
+            L.geoJSON(data, {
+                // Style each country polygon based on visited status
+                style: function (feature) {
+                    const countryName = feature.properties.NAME;
+                    const visited = visitedCountries.has(countryName);
+                    return {
+                        fillColor: visited ? "#4CAF50" : "#aabbff",
+                        fillOpacity: visited ? 0.5 : 0.2,
+                        weight: 1,
+                        color: visited ? "#2E7D32" : "#3388ff",
+                        dashArray: visited ? "" : "5,4",
+                        className: visited ? "country-polygon visited" : "country-polygon"
+                    };
+                },
+                // This function is called for each country polygon
+                onEachFeature: function (feature, layer) {
+                    const countryName = feature.properties.NAME;
+
+                    // Store reference for later fast updating
+                    countriesByName[countryName].layer = layer;
+
+                    // Setup popup using helper, ensure it can toggle visited status
+                    layer.on('click', function (e) {
+                        layer.bindPopup(countryPopupHTML(countryName)).openPopup(e.latlng);
+                        addPopupButtonListener(layer, countryName);
+                    });
+                }
+            }).addTo(map);
+
+            updateStats();
         });
 
-        if (!stillHasSameContinent) {
-            visitedContinents.delete(country.continent);
-        }
-    } else {
-        visitedCountries.add(countryName);
-        visitedContinents.add(country.continent);
+    // Generates the popup HTML depending on visited status
+    function countryPopupHTML(countryName) {
+        const visited = visitedCountries.has(countryName);
+        const buttonText = visited ? "Remove from Visited" : "Mark as Visited";
+        // Use sanitized ID for unique button in DOM
+        const buttonId = `popup-btn-${countryName.replace(/[^a-z0-9]/ig, '')}`;
+        return `
+            <div>
+                <h3>${countryName}</h3>
+                <button class="popup-btn" id="${buttonId}">${buttonText}</button>
+            </div>
+        `;
     }
 
-    updateStats();
-    updateCountryPopup(countryName);
-    updateCountryStyle(countryName);
-}
+    // Attach the popup button handler after popup opens
+    function addPopupButtonListener(layer, countryName) {
+        setTimeout(() => {
+            const buttonId = `popup-btn-${countryName.replace(/[^a-z0-9]/ig, '')}`;
+            const btn = document.getElementById(buttonId);
+            if (btn) btn.onclick = () => toggleVisited(countryName);
+        }, 10); // Needs short delay for popup to be in DOM
+    }
 
-// Function to update statistics display
-function updateStats() {
-    document.getElementById('countries-count').textContent = visitedCountries.size;
-    document.getElementById('continents-count').textContent = visitedContinents.size;
-}
+    // Toggle visited status for a country and update relevant UI
+    function toggleVisited(countryName) {
+        if (visitedCountries.has(countryName)) {
+            visitedCountries.delete(countryName);
+        } else {
+            visitedCountries.add(countryName);
+        }
+        updateCountryUI(countryName);
+        updateStats();
+    }
 
+    // Update both the polygon style and popup for a specific country
+    function updateCountryUI(countryName) {
+        const info = countriesByName[countryName];
+        if (!info) return;
 
-// Initialize stats on page load
-updateStats();
+        // Update polygon coloring
+        const visited = visitedCountries.has(countryName);
+        info.layer.setStyle({
+            fillColor: visited ? "#4CAF50" : "#aabbff",
+            fillOpacity: visited ? 0.5 : 0.2,
+            weight: 1,
+            color: visited ? "#2E7D32" : "#3388ff"
+        });
+        // Update popup content if it's open
+        if (info.layer.isPopupOpen()) {
+            info.layer.setPopupContent(countryPopupHTML(countryName));
+            addPopupButtonListener(info.layer, countryName);
+        }
+    }
 
-/*These are some extra functions*/
+    // Update travel statistics for countries and continents
+    function updateStats() {
+        document.getElementById('countries-count').textContent = `${visitedCountries.size} of 209`;
+        // Compute number of distinct visited continents based on visitedCountries
+        let visitedContinents = new Set();
+        for (const countryName of visitedCountries) {
+            const cont = countriesByName[countryName]?.continent;
+            if (cont) visitedContinents.add(cont);
+        }
+        document.getElementById('continents-count').textContent = `${visitedContinents.size} of 7`;
+        // If dropdown is open, also update continent details
+        if (document.getElementById('continents-details').style.display === 'block') {
+            renderContinentsDetails();
+        }
+    }
 
-// Update popup content based on visit status
-function updateCountryPopup(countryName) {
-    const country = countryLayers.find(c => c.name === countryName);
-    if (!country) return;
+    // Compute breakdown of visited countries by continent for the details dropdown
+    function getVisitedByContinent() {
+        const map = {};
+        continentList.forEach(c => map[c] = new Set());
+        for (const name of visitedCountries) {
+            const cont = countriesByName[name]?.continent;
+            if (cont) map[cont].add(name);
+        }
+        return map;
+    }
 
-    const visited = visitedCountries.has(countryName);
+    // Render the continents breakdown in the interactive dropdown
+    function renderContinentsDetails() {
+        const byCont = getVisitedByContinent();
+        const container = document.getElementById('continents-details');
+        let html = "";
+        continentList.forEach(cont => {
+            const visitedCount = byCont[cont].size;
+            const totalCount = countriesByContinent[cont].length;
+            if (totalCount > 0) {
+                html += `
+                <div class="continent-row">
+                    <span class="continent-name">${cont}</span>
+                    <span class="continent-count">${visitedCount} of ${totalCount}</span>
+                </div>`;
+            }
+        });
+        container.innerHTML = html;
+    }
 
-    const buttonText = visited ? "Remove from Visited" : "Mark as Visited";
-
-    country.layer.setPopupContent(`
-        <div>
-            <h3>${countryName}</h3>
-            <button onclick="toggleVisited('${countryName}')">${buttonText}</button>
-        </div>
-    `);
-}
-
-// Updates the polygon border around each country based on the visit status
-function updateCountryStyle(countryName) {
-    const country = countryLayers.find(c => c.name === countryName);
-    if (!country) return;
-
-    const visited = visitedCountries.has(countryName);
-
-    country.layer.setStyle({
-        fillColor: visited ? "#4CAF50" : "#3388ff", // green if visited, blue default
-        fillOpacity: visited ? 0.7 : 0.2,
-        weight: 1,
-        color: visited ? "#2E7D32" : "#3388ff"
+    // Setup dropdown for continent details (shows/hides with stat update)
+    document.getElementById('continents-dropdown-label').addEventListener('click', function () {
+        const details = document.getElementById('continents-details');
+        const label = document.getElementById('continents-dropdown-label');
+        if (details.style.display === 'none' || !details.style.display) {
+            details.style.display = 'block';
+            label.classList.add('open');
+            renderContinentsDetails();
+        } else {
+            details.style.display = 'none';
+            label.classList.remove('open');
+        }
     });
-}
 
-console.log('Travel Tracker initialized successfully!');
+    // Initial stats display on page load
+    updateStats();
+
+    console.log('Travel Tracker initialized successfully!');
+})();
