@@ -30,6 +30,13 @@
     map.setMinZoom(4);
     map.setMaxZoom(18);
 
+    // From web storage load existing info
+    loadVisitedCountries();
+    // Goes through all countries to update their initial visual settings on load
+    Object.keys(countriesByName).forEach(updateCountryUI);
+    // Update stats accordingly
+    updateStats();
+
     // Fetch and add the border data for each country
     fetch('assets/countries.geo.json')
         .then(response => response.json())
@@ -108,6 +115,7 @@
             visitedCountries.add(countryName);
         }
         updateCountryUI(countryName);
+        saveVisitedCountries();
         updateStats();
     }
 
@@ -175,6 +183,15 @@
             }
         });
         container.innerHTML = html;
+    }
+
+    function saveVisitedCountries() {
+        localStorage.setItem('visitedCountries', JSON.stringify([...visitedCountries]));
+    }
+
+    function loadVisitedCountries() {
+        const saved = JSON.parse(localStorage.getItem('visitedCountries') || '[]');
+        saved.forEach(name => visitedCountries.add(name));
     }
 
     // Setup dropdown for continent details (shows/hides with stat update)
