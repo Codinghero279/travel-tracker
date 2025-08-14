@@ -3,6 +3,7 @@
     const map = L.map('map').setView([20, 0], 4);
     const countriesByName = {}; // { name: {layer, continent} }
     const visitedCountries = {}; // { countryName: { from, to } }
+    let countryDays = {}; // { countryName: totalDays }
 
     const continentList = [
         "Africa", "Antarctica", "Asia", "Europe", "North America", "Oceania", "South America"
@@ -21,6 +22,7 @@
     // Load from storage on startup
     loadVisitedCountries();
     Object.keys(countriesByName).forEach(updateCountryUI); // For previously loaded countries
+    updateCountryDays();
     updateStats();
 
     // ----- LOAD GEOJSON COUNTRY BORDERS -----
@@ -122,6 +124,7 @@
                     visitedCountries[countryName][editIndex] = { from, to: to || from };
                     saveVisitedCountries();
                     updateCountryUI(countryName);
+                    updateCountryDays();
                     updateStats();
                     // Return to view list
                     const latlng = layer.getPopup().getLatLng();
@@ -146,12 +149,18 @@
                 document.getElementById('save-new-visit-btn').onclick = () => {
                     const from = document.getElementById("new-visit-from").value;
                     const to = document.getElementById("new-visit-to").value;
-                    if (!from) { alert("Please select a start date!"); return; }
+                    if (!from) {
+                        alert("Please select a start date!");
+                        return;
+                    }
                     const visit = { from, to: to || from };
-                    if (!visitedCountries[countryName]) visitedCountries[countryName] = [];
+                    if (!visitedCountries[countryName]) {
+                        visitedCountries[countryName] = [];
+                    }
                     visitedCountries[countryName].push(visit);
                     saveVisitedCountries();
                     updateCountryUI(countryName);
+                    updateCountryDays();
                     updateStats();
                     const latlng = layer.getPopup().getLatLng();
                     layer.closePopup();
@@ -190,6 +199,7 @@
                     if (visitedCountries[countryName].length === 0) delete visitedCountries[countryName];
                     saveVisitedCountries();
                     updateCountryUI(countryName);
+                    updateCountryDays();
                     updateStats();
                     layer.closePopup();
                 };
@@ -247,6 +257,22 @@
         if (info.maxDate) {
             document.getElementById('last-visit').textContent = `${info.maxDate.toLocaleDateString()} - ${info.lastCountry}`;
         }
+        if (info.maxTrips) {
+            document.getElementById('most-visited').textContent = `${info.maxTrips} Visit${info.maxTrips > 1 ? 's' : ''} - ${info.mostVisited}`;
+        }
+        let maxCountry = null;
+        let maxDays = 0;
+
+        for (const [country, days] of Object.entries(countryDays)) {
+            if (days > maxDays) {
+                maxDays = days;
+                maxCountry = country;
+            }
+        }
+
+        if (maxDays > 0) {
+            document.getElementById('most-days-spent').textContent = `${maxCountry} - You Spent ${maxDays} Day${maxDays > 1 ? 's!' : '!'}`;
+        }
 
         // This is for updating the trip statistics drop down and header too
         document.getElementById('trip-count').textContent = info.numTrips ? `${info.numTrips} Trip${info.numTrips === 1 ? "" : "s"}` : "No Trips Yet!";
@@ -300,10 +326,6 @@
             <span class="trip-count">${info.totalDays}</span>
         </div>
         <div class="trip-row">
-            <span>Trips:</span>
-            <span class="trip-count">${info.numTrips}</span>
-        </div>
-        <div class="trip-row">
             <span>Longest Trip:</span>
             <span class="trip-count">${info.longest || 0} day(s) ${info.maxCountry ? "to " + info.maxCountry : ""}</span>
         </div>
@@ -330,7 +352,12 @@
         let firstCountry = null, lastCountry = null;
         let totalDays = 0, numTrips = 0, longest = 0, shortest = null;
         let maxCountry = null, minCountry = null;
+        let maxTrips = 0, mostVisited = null;
         Object.entries(visitedCountries).forEach(([countryName, visits]) => {
+            if (visits.length > maxTrips) {
+                maxTrips = visits.length;
+                mostVisited = countryName;
+            }
             visits.forEach(info => {
                 const from = parseLocalDate(info.from);
                 const to = parseLocalDate(info.to);
@@ -355,7 +382,24 @@
                 }
             });
         });
-        return { minDate, maxDate, firstCountry, lastCountry, shortest, longest, maxCountry, minCountry, numTrips, totalDays };
+        return { minDate, maxDate, firstCountry, lastCountry, shortest, longest, maxCountry, minCountry, numTrips, totalDays, maxTrips, mostVisited };
+    }
+
+    function updateCountryDays() {
+        countryDays = {}; // Reset
+
+        for (const [country, visits] of Object.entries(visitedCountries)) {
+            let total = 0;
+            for (const v of visits) {
+                const from = parseLocalDate(v.from);
+                const to = parseLocalDate(v.to || v.from);
+                // Ensure valid dates
+                if (from && to && !isNaN(from) && !isNaN(to)) {
+                    total += Math.round((to - from) / 86400000) + 1;
+                }
+            }
+            countryDays[country] = total;
+        }
     }
 
     // This is for displaying the drop down of countries visited in each continent
