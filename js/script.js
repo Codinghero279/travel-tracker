@@ -171,16 +171,34 @@
 
     // ----- STATS, CONTINENT DETAILS & LOCAL STORAGE -----
     function updateStats() {
+        // This is for updating countries visited
         document.getElementById('countries-count').textContent = `${Object.keys(visitedCountries).length} of 209`;
         let visitedContinents = new Set();
         for (const countryName in visitedCountries) {
             const cont = countriesByName[countryName]?.continent;
             if (cont) visitedContinents.add(cont);
         }
+        // This is for updating continents visited
         document.getElementById('continents-count').textContent = `${visitedContinents.size} of 7`;
         if (document.getElementById('continents-details').style.display === 'block') {
             renderContinentsDetails();
         }
+
+        const tripInfo = getTripDates();
+        if (tripInfo.minDate) {
+            document.getElementById('first-visit').textContent =
+                `${tripInfo.minDate.toLocaleDateString()} - ${tripInfo.firstCountry}`;
+        }
+        if (tripInfo.maxDate) {
+            document.getElementById('last-visit').textContent = `${tripInfo.maxDate.toLocaleDateString()} - ${tripInfo.lastCountry}`;
+        }
+    }
+
+    // This function is used to extract the date for presentation on screen otherswise using toLocaleDateString() causes consistency issues to due timezone variations
+    function parseLocalDate(inputValue) {
+        // inputValue: "2024-08-01"
+        const [year, month, day] = inputValue.split('-').map(Number);
+        return new Date(year, month - 1, day); // month is 0-based!
     }
 
     function getVisitedByContinent() {
@@ -220,6 +238,26 @@
         Object.assign(visitedCountries, saved);
     }
 
+    // This is for getting the earliest/latest trips and will be paired with the country traveled to
+    function getTripDates() {
+        let minDate = null, maxDate = null;
+        let firstCountry = null, lastCountry = null;
+        Object.entries(visitedCountries).forEach(([countryName, info]) => {
+            const from = parseLocalDate(info.from);
+            const to = parseLocalDate(info.to);
+            if (!minDate || from < minDate) {
+                minDate = from;
+                firstCountry = countryName;
+            }
+            if (!maxDate || to > maxDate) {
+                maxDate = to;
+                lastCountry = countryName;
+            }
+        });
+        return { minDate, maxDate, firstCountry, lastCountry };
+    }
+
+    // This is for displaying the drop down of countries visited in each continent
     document.getElementById('continents-dropdown-label').addEventListener('click', function () {
         const details = document.getElementById('continents-details');
         const label = document.getElementById('continents-dropdown-label');
