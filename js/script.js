@@ -178,23 +178,30 @@
             const cont = countriesByName[countryName]?.continent;
             if (cont) visitedContinents.add(cont);
         }
-        // This is for updating continents visited
+        // This is for updating continents visited and the dropdown too
         document.getElementById('continents-count').textContent = `${visitedContinents.size} of 7`;
         if (document.getElementById('continents-details').style.display === 'block') {
             renderContinentsDetails();
         }
 
-        const tripInfo = getTripDates();
-        if (tripInfo.minDate) {
+        // This is for updating earliest and latest trips -- could be moved into renderTripDetails at some point tho
+        let info = getTripStats();
+        if (info.minDate) {
             document.getElementById('first-visit').textContent =
-                `${tripInfo.minDate.toLocaleDateString()} - ${tripInfo.firstCountry}`;
+                `${info.minDate.toLocaleDateString()} - ${info.firstCountry}`;
         }
-        if (tripInfo.maxDate) {
-            document.getElementById('last-visit').textContent = `${tripInfo.maxDate.toLocaleDateString()} - ${tripInfo.lastCountry}`;
+        if (info.maxDate) {
+            document.getElementById('last-visit').textContent = `${info.maxDate.toLocaleDateString()} - ${info.lastCountry}`;
+        }
+
+        // This is for updating the trip statistics drop down and header too
+        document.getElementById('trip-count').textContent = info.numTrips ? `${info.numTrips} Trip${info.numTrips === 1 ? "" : "s"}` : "No Trips Yet!";
+        if (document.getElementById('trip-details').style.display === 'block') {
+            renderTripDetails();
         }
     }
 
-    // This function is used to extract the date for presentation on screen otherswise using toLocaleDateString() causes consistency issues to due timezone variations
+    // This function is used to extract the date for presentation on screen otherswise using just toLocaleDateString() causes consistency issues to due timezone variations
     function parseLocalDate(inputValue) {
         // inputValue: "2024-08-01"
         const [year, month, day] = inputValue.split('-').map(Number);
@@ -229,6 +236,31 @@
         container.innerHTML = html;
     }
 
+    function renderTripDetails() {
+        const info = getTripStats();
+        const container = document.getElementById('trip-details');
+        let html = "";
+        html += `
+        <div class="trip-row">
+            <span>Total Days Abroad:</span>
+            <span class="trip-count">${info.totalDays}</span>
+        </div>
+        <div class="trip-row">
+            <span>Trips:</span>
+            <span class="trip-count">${info.numTrips}</span>
+        </div>
+        <div class="trip-row">
+            <span>Longest Trip:</span>
+            <span class="trip-count">${info.longest || 0} day(s) ${info.maxCountry ? "to " + info.maxCountry : ""}</span>
+        </div>
+        <div class="trip-row">
+            <span>Shortest Trip:</span>
+            <span class="trip-count">${info.shortest !== null ? info.shortest : 0} day(s) ${info.minCountry ? "to " + info.minCountry : ""}</span>
+        </div>
+        `;
+        container.innerHTML = html;
+    }
+
     function saveVisitedCountries() {
         localStorage.setItem('visitedCountries', JSON.stringify(visitedCountries));
     }
@@ -239,12 +271,17 @@
     }
 
     // This is for getting the earliest/latest trips and will be paired with the country traveled to
-    function getTripDates() {
+    function getTripStats() {
         let minDate = null, maxDate = null;
         let firstCountry = null, lastCountry = null;
+        let totalDays = 0, numTrips = 0, longest = 0, shortest = null;
+        let maxCountry = null, minCountry = null;
         Object.entries(visitedCountries).forEach(([countryName, info]) => {
             const from = parseLocalDate(info.from);
             const to = parseLocalDate(info.to);
+            const days = Math.round((to - from) / 86400000) + 1;
+            totalDays++;
+            numTrips++;
             if (!minDate || from < minDate) {
                 minDate = from;
                 firstCountry = countryName;
@@ -253,8 +290,16 @@
                 maxDate = to;
                 lastCountry = countryName;
             }
+            if (days > longest) {
+                longest = days;
+                maxCountry = countryName;
+            }
+            if (shortest === null || days < shortest) {
+                shortest = days;
+                minCountry = countryName;
+            }
         });
-        return { minDate, maxDate, firstCountry, lastCountry };
+        return { minDate, maxDate, firstCountry, lastCountry, shortest, longest, maxCountry, minCountry, numTrips, totalDays };
     }
 
     // This is for displaying the drop down of countries visited in each continent
@@ -265,6 +310,20 @@
             details.style.display = 'block';
             label.classList.add('open');
             renderContinentsDetails();
+        } else {
+            details.style.display = 'none';
+            label.classList.remove('open');
+        }
+    });
+
+    // This is for displaying the drop down of trip details
+    document.getElementById('trip-dropdown-label').addEventListener('click', function () {
+        const details = document.getElementById('trip-details');
+        const label = document.getElementById('trip-dropdown-label');
+        if (details.style.display === 'none' || !details.style.display) {
+            details.style.display = 'block';
+            label.classList.add('open');
+            renderTripDetails();
         } else {
             details.style.display = 'none';
             label.classList.remove('open');

@@ -36,7 +36,7 @@ main {
     margin: 2rem auto;
     padding: 0 1rem;
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 450px;
     gap: 2rem;
 }
 
@@ -159,6 +159,34 @@ main {
 }
 
 .continent-row .continent-count {
+    color: #667eea;
+    font-weight: bold;
+}
+
+/* Trip details area styling */
+.trip-details {
+    background: #f5f7fa;
+    border-radius: 5px;
+    padding: 0.2em 1.5em 0.2em 1.5em;
+    margin-top: -0.5em;
+    /* Tuck closer to stat-item */
+    margin-bottom: 0.4em;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.10);
+    font-size: 1em;
+}
+
+.trip-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5em 0;
+}
+
+.trip-row .continent-name {
+    font-weight: 500;
+    color: #555;
+}
+
+.trip-row .trip-count {
     color: #667eea;
     font-weight: bold;
 }
