@@ -54,7 +54,7 @@
                     countriesByName[countryName].layer = layer;
                     layer.on('click', function (e) {
                         layer.bindPopup(countryPopupHTML(countryName)).openPopup(e.latlng);
-                        addPopupButtonListener(layer, countryName, false);
+                        addPopupButtonListener(layer, countryName);
                     });
                 }
             }).addTo(map);
@@ -63,92 +63,146 @@
         });
 
     // ----- POPUP HTML GENERATOR FOR COUNTRY CLICKS-----
-    function countryPopupHTML(countryName, editMode = false) {
-        const visitInfo = visitedCountries[countryName];
-        if (visitInfo && !editMode) {
-            // View mode: display visit info with edit/remove buttons
-            return `
-                <div>
-                    <h3>${countryName}</h3>
-                    <div>
-                        Visited: ${visitInfo.from}${visitInfo.to && visitInfo.to !== visitInfo.from ? " to " + visitInfo.to : ""}
-                    </div>
-                    <button id="edit-visit-btn">Edit Visit</button>
-                    <button id="remove-visit-btn">Remove from Visited</button>
+    function countryPopupHTML(countryName, editIndex = null, addMode = false) {
+        const visits = visitedCountries[countryName] || [];
+        let html = `<div class="travel-popup"><h3>${countryName}</h3>`;
+
+        // Visit Editing Form ("editIndex" is the index of the visit being edited)
+        if (editIndex !== null && visits[editIndex]) {
+            const v = visits[editIndex];
+            html += `
+                <label>From: <input type="date" id="visit-from-date" value="${v.from}"></label><br>
+                <label>To (optional): <input type="date" id="visit-to-date" value="${v.to}"></label><br>
+                <div class="form-btn-row">    
+                    <button id="save-visit-btn">Save Visit</button>
+                    <button id="cancel-edit-btn">Cancel</button>
+                </div>
+            `;
+        } else if (addMode) {
+            // New Visit Form
+            html += `
+                <label>From: <input type="date" id="new-visit-from"></label>
+                <label>To: <input type="date" id="new-visit-to"></label><br>
+                <div class="form-btn-row">
+                    <button id="save-new-visit-btn">Save</button>
+                    <button id="cancel-new-visit-btn">Cancel</button>
                 </div>
             `;
         } else {
-            // Entry/edit mode: show form with values (if editing)
-            const fromVal = visitInfo ? visitInfo.from : "";
-            const toVal = visitInfo ? visitInfo.to : "";
-            return `
-                <div>
-                    <h3>${countryName}</h3>
-                    <label>From: <input type="date" id="visit-from-date" value="${fromVal}"></label><br>
-                    <label>To (optional): <input type="date" id="visit-to-date" value="${toVal}"></label><br>
-                    <button id="save-visit-btn">Save Visit</button>
-                    ${visitInfo ? `<button id="cancel-edit-btn">Cancel</button>` : ""}
-                </div>
-            `;
+            // List visits
+            if (visits.length) {
+                visits.forEach((v, i) => {
+                    html += `<div class="visit-row">
+                        <span class="visit-dates">${v.from}${v.to && v.to !== v.from ? " to " + v.to : ""}</span>
+                        <button class="edit-visit-btn" data-index="${i}">Edit</button>
+                        <button class="remove-visit-btn" data-index="${i}">Remove</button>
+                    </div>`;
+                });
+            } else {
+                html += "<p>No Visits Yet!</p>";
+            }
+            // Show add button
+            html += `<button id="add-visit-btn">Add New Visit</button>`;
         }
+        html += `</div>`;
+        return html;
     }
 
     // ----- POPUP BUTTON HANDLERS FOR COUNTRY CLICKS -----
-    function addPopupButtonListener(layer, countryName, editMode = false) {
+    function addPopupButtonListener(layer, countryName, editIndex = null, addMode = false) {
         setTimeout(() => {
-            const visitInfo = visitedCountries[countryName];
-
-            if (visitInfo && !editMode) {
-                // View mode handlers
-                const editBtn = document.getElementById("edit-visit-btn");
-                if (editBtn) editBtn.onclick = () => {
-                    const latlng = layer.getPopup().getLatLng();
-                    layer.closePopup();
-                    setTimeout(() => {
-                        layer.bindPopup(countryPopupHTML(countryName, true)).openPopup(latlng);
-                        addPopupButtonListener(layer, countryName, true);
-                    }, 0);
-                };
-                const removeBtn = document.getElementById("remove-visit-btn");
-                if (removeBtn) removeBtn.onclick = () => {
-                    delete visitedCountries[countryName];
-                    saveVisitedCountries();
-                    updateCountryUI(countryName);
-                    updateStats();
-                    layer.closePopup();
-                };
-            } else {
-                // Edit or Add mode handlers
+            // Edit visit mode
+            if (editIndex !== null) {
                 const saveBtn = document.getElementById("save-visit-btn");
-                if (saveBtn) saveBtn.onclick = () => {
+                const cancelBtn = document.getElementById("cancel-edit-btn");
+                saveBtn.onclick = () => {
                     const from = document.getElementById("visit-from-date").value;
                     const to = document.getElementById("visit-to-date").value;
-                    if (!from) {
-                        alert("Please select at least a start date!");
-                        return;
-                    }
-                    visitedCountries[countryName] = { from, to: to || from };
+                    if (!from) { alert("Please select a start date!"); return; }
+                    visitedCountries[countryName][editIndex] = { from, to: to || from };
                     saveVisitedCountries();
                     updateCountryUI(countryName);
                     updateStats();
-                    // Reopen in view mode after save
+                    // Return to view list
                     const latlng = layer.getPopup().getLatLng();
                     layer.closePopup();
                     setTimeout(() => {
-                        layer.bindPopup(countryPopupHTML(countryName, false)).openPopup(latlng);
-                        addPopupButtonListener(layer, countryName, false);
+                        layer.bindPopup(countryPopupHTML(countryName)).openPopup(latlng);
+                        addPopupButtonListener(layer, countryName);
                     }, 0);
                 };
-                const cancelBtn = document.getElementById("cancel-edit-btn");
-                if (cancelBtn) cancelBtn.onclick = () => {
+                cancelBtn.onclick = () => {
                     const latlng = layer.getPopup().getLatLng();
                     layer.closePopup();
                     setTimeout(() => {
-                        layer.bindPopup(countryPopupHTML(countryName, false)).openPopup(latlng);
-                        addPopupButtonListener(layer, countryName, false);
+                        layer.bindPopup(countryPopupHTML(countryName)).openPopup(latlng);
+                        addPopupButtonListener(layer, countryName);
                     }, 0);
                 };
+                return;
             }
+            // Add Visit Form
+            if (addMode) {
+                document.getElementById('save-new-visit-btn').onclick = () => {
+                    const from = document.getElementById("new-visit-from").value;
+                    const to = document.getElementById("new-visit-to").value;
+                    if (!from) { alert("Please select a start date!"); return; }
+                    const visit = { from, to: to || from };
+                    if (!visitedCountries[countryName]) visitedCountries[countryName] = [];
+                    visitedCountries[countryName].push(visit);
+                    saveVisitedCountries();
+                    updateCountryUI(countryName);
+                    updateStats();
+                    const latlng = layer.getPopup().getLatLng();
+                    layer.closePopup();
+                    setTimeout(() => {
+                        layer.bindPopup(countryPopupHTML(countryName)).openPopup(latlng);
+                        addPopupButtonListener(layer, countryName);
+                    }, 0);
+                };
+                document.getElementById('cancel-new-visit-btn').onclick = () => {
+                    const latlng = layer.getPopup().getLatLng();
+                    layer.closePopup();
+                    setTimeout(() => {
+                        layer.bindPopup(countryPopupHTML(countryName)).openPopup(latlng);
+                        addPopupButtonListener(layer, countryName);
+                    }, 0);
+                };
+                return;
+            }
+            // List view: Hook up edit/remove for each visit
+            Array.from(document.getElementsByClassName("edit-visit-btn")).forEach(btn => {
+                btn.onclick = (ev) => {
+                    const idx = +btn.getAttribute("data-index");
+                    const latlng = layer.getPopup().getLatLng();
+                    layer.closePopup();
+                    setTimeout(() => {
+                        layer.bindPopup(countryPopupHTML(countryName, idx)).openPopup(latlng);
+                        addPopupButtonListener(layer, countryName, idx);
+                    }, 0);
+                };
+            });
+            Array.from(document.getElementsByClassName("remove-visit-btn")).forEach(btn => {
+                btn.onclick = (ev) => {
+                    const idx = +btn.getAttribute("data-index");
+                    visitedCountries[countryName].splice(idx, 1);
+                    // If no visits remain, remove country from list
+                    if (visitedCountries[countryName].length === 0) delete visitedCountries[countryName];
+                    saveVisitedCountries();
+                    updateCountryUI(countryName);
+                    updateStats();
+                    layer.closePopup();
+                };
+            });
+            const addBtn = document.getElementById("add-visit-btn");
+            if (addBtn) addBtn.onclick = () => {
+                const latlng = layer.getPopup().getLatLng();
+                layer.closePopup();
+                setTimeout(() => {
+                    layer.bindPopup(countryPopupHTML(countryName, null, true)).openPopup(latlng);
+                    addPopupButtonListener(layer, countryName, null, true);
+                }, 0);
+            };
         }, 10);
     }
 
@@ -165,7 +219,7 @@
         });
         if (info.layer.isPopupOpen()) {
             info.layer.setPopupContent(countryPopupHTML(countryName));
-            addPopupButtonListener(info.layer, countryName, false);
+            addPopupButtonListener(info.layer, countryName);
         }
     }
 
@@ -276,28 +330,30 @@
         let firstCountry = null, lastCountry = null;
         let totalDays = 0, numTrips = 0, longest = 0, shortest = null;
         let maxCountry = null, minCountry = null;
-        Object.entries(visitedCountries).forEach(([countryName, info]) => {
-            const from = parseLocalDate(info.from);
-            const to = parseLocalDate(info.to);
-            const days = Math.round((to - from) / 86400000) + 1;
-            totalDays++;
-            numTrips++;
-            if (!minDate || from < minDate) {
-                minDate = from;
-                firstCountry = countryName;
-            }
-            if (!maxDate || to > maxDate) {
-                maxDate = to;
-                lastCountry = countryName;
-            }
-            if (days > longest) {
-                longest = days;
-                maxCountry = countryName;
-            }
-            if (shortest === null || days < shortest) {
-                shortest = days;
-                minCountry = countryName;
-            }
+        Object.entries(visitedCountries).forEach(([countryName, visits]) => {
+            visits.forEach(info => {
+                const from = parseLocalDate(info.from);
+                const to = parseLocalDate(info.to);
+                const days = Math.round((to - from) / 86400000) + 1;
+                totalDays++;
+                numTrips++;
+                if (!minDate || from < minDate) {
+                    minDate = from;
+                    firstCountry = countryName;
+                }
+                if (!maxDate || to > maxDate) {
+                    maxDate = to;
+                    lastCountry = countryName;
+                }
+                if (days > longest) {
+                    longest = days;
+                    maxCountry = countryName;
+                }
+                if (shortest === null || days < shortest) {
+                    shortest = days;
+                    minCountry = countryName;
+                }
+            });
         });
         return { minDate, maxDate, firstCountry, lastCountry, shortest, longest, maxCountry, minCountry, numTrips, totalDays };
     }

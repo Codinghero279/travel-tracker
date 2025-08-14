@@ -190,3 +190,104 @@ main {
     color: #667eea;
     font-weight: bold;
 }
+
+/* Make leaflets popups a little wider */
+.leaflet-popup-content {
+    min-width: 240px;
+    padding: 0 4px 4px 4px;
+}
+
+/* Base travel popup styling */
+.travel-popup h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.35em;
+    color: #0055aa;
+    text-align: center;
+}
+
+.travel-popup label {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+    font-size: 0.99em;
+    font-weight: 500;
+}
+
+.travel-popup button {
+    background: #0080ff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    margin: 2px 3px 2px 0;
+    padding: 4px 13px;
+    box-shadow: 0 1px 5px #0002;
+    font-size: 0.99em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.travel-popup button:hover,
+.travel-popup button:focus {
+    background: #005fd1;
+}
+
+.travel-popup input[type="date"] {
+    font-size: 1em;
+    border: 1px solid #aad;
+    border-radius: 5px;
+    padding: 2px 4px;
+    margin: 2px 0 4px 0;
+}
+
+.travel-popup p {
+    margin: 8px 0;
+    color: #444;
+    font-size: .97em;
+}
+
+.travel-popup .remove-visit-btn {
+    background: #dd2222;
+}
+
+.travel-popup .remove-visit-btn:hover {
+    background: #ab1515;
+}
+
+.travel-popup .edit-visit-btn {
+    background: #bbb;
+    color: #222;
+}
+
+.travel-popup .edit-visit-btn:hover {
+    background: #ccc;
+}
+
+.travel-popup #add-visit-btn {
+    display: block;
+    margin: 14px auto 4px auto;
+    background: #0080ff;
+    color: #fff;
+    font-weight: 600;
+    font-size: 1em;
+    border-radius: 17px;
+    box-shadow: 0 1px 6px #0001;
+    padding: 8px 22px;
+    transition: background 0.18s;
+}
+
+.travel-popup #add-visit-btn:hover,
+.travel-popup #add-visit-btn:focus {
+    background: #005fd1;
+}
+
+.travel-popup .form-btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    /* Space between buttons */
+    margin-top: 10px;
+}
+
+.travel-popup .form-btn-row button {
+    min-width: 80px;
+}
