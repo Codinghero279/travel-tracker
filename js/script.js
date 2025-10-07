@@ -430,6 +430,12 @@
         }
     });
 
+    // === Dynamic current year in footer ===
+    const yearSpan = document.querySelector("#year");
+    if (yearSpan) {
+        yearSpan.textContent = new Date().getFullYear();
+    }
+
     // Initial stats display on page load
     updateStats();
     console.log('Travel Tracker initialized successfully!');
